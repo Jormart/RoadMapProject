@@ -1,2 +1,2 @@
 "# RoadMapProject" 
-"# Get quick insigth into old legacy COBOL" 
+"# Get quick visual insight into old legacy COBOL" 
