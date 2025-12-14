@@ -1,5 +1,6 @@
 
 
+
 # Interfaz gráfica con Streamlit
 import streamlit as st
 import subprocess
@@ -11,9 +12,13 @@ st.write("""
 Selecciona el tipo de análisis a realizar sobre un programa COBOL y sube el archivo a analizar.
 """)
 
-uploaded_file = st.file_uploader("Selecciona un archivo COBOL", type=["cob", "cbl", "txt", "*"], accept_multiple_files=False)
+# Selección de tipo de análisis
+analisis = st.radio(
+    "Selecciona el tipo de análisis:",
+    ("Análisis de párrafos y SQL (DB2)", "Análisis de llamadas externas (CALLs/FEXXX, XPLAIN)")
+)
 
-col1, col2 = st.columns(2)
+uploaded_file = st.file_uploader("Selecciona un archivo COBOL", type=["cob", "cbl", "txt", "*"], accept_multiple_files=False)
 
 if uploaded_file:
     # Guardar archivo temporalmente
@@ -21,8 +26,8 @@ if uploaded_file:
     with open(temp_path, "wb") as f:
         f.write(uploaded_file.read())
 
-    with col1:
-        if st.button("Análisis de párrafos y SQL (DB2)"):
+    if analisis == "Análisis de párrafos y SQL (DB2)":
+        if st.button("Ejecutar análisis de párrafos y SQL (DB2)"):
             with st.spinner("Ejecutando análisis de párrafos y SQL..."):
                 try:
                     result = subprocess.run(["python", "RoadMap.07.py", temp_path, "SQL"], capture_output=True, text=True, check=True)
@@ -30,9 +35,8 @@ if uploaded_file:
                     st.text_area("Salida del análisis:", result.stdout)
                 except subprocess.CalledProcessError as e:
                     st.error(f"Error al ejecutar el análisis: {e.stderr}")
-
-    with col2:
-        if st.button("Análisis de llamadas externas (CALLs/FEXXX, XPLAIN)"):
+    else:
+        if st.button("Ejecutar análisis de llamadas externas (CALLs/FEXXX, XPLAIN)"):
             with st.spinner("Ejecutando análisis de llamadas externas..."):
                 try:
                     result = subprocess.run(["python", "RoadMapCalls.05.py", temp_path], capture_output=True, text=True, check=True)
@@ -40,8 +44,5 @@ if uploaded_file:
                     st.text_area("Salida del análisis:", result.stdout)
                 except subprocess.CalledProcessError as e:
                     st.error(f"Error al ejecutar el análisis: {e.stderr}")
-
-    # Limpieza del archivo temporal (opcional)
-    # os.remove(temp_path)
 else:
     st.info("Por favor, selecciona un archivo COBOL para analizar.")
