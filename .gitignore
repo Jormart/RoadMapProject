@@ -1,0 +1,9 @@
+# Ignorar archivos temporales y de resumen
+README_SUMMARY.md
+temp_input.cob
+*.pdf
+*.dict
+*.svg
+.DS_Store
+__pycache__/
+*.pyc
