@@ -7,3 +7,8 @@ temp_input.cob
 .DS_Store
 __pycache__/
 *.pyc
+
+# Código fuente COBOL (no subir)
+*.txt
+*.cob
+*.cbl
