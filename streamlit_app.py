@@ -425,7 +425,7 @@ with mode[1]:
                 <button onclick="panZoomXplain.resetZoom(); panZoomXplain.center();" style="padding:5px 15px; margin-right:5px; cursor:pointer;">🔄 Reset</button>
                 <button onclick="panZoomXplain.fit(); panZoomXplain.center();" style="padding:5px 15px; cursor:pointer;">📐 Ajustar</button>
             </div>
-            <div id="graph-xplain-container" style="width:100%; height:85vh; overflow:hidden;"></div>
+            <div id="graph-xplain-container" style="width:100%; height:95vh; overflow:hidden;"></div>
         </div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
@@ -458,7 +458,7 @@ with mode[1]:
             }})();
         </script>
         '''
-        st.components.v1.html(viewer_html, height=750, scrolling=False)
+        st.components.v1.html(viewer_html, height=900, scrolling=False)
         
         # Detalles expandibles
         with st.expander("📋 Detalles del análisis"):
