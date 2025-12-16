@@ -127,38 +127,62 @@ with mode[0]:
             tree_text = build_tree_text(dicc, selects)
             st.code(tree_text, language="text")
 
-            st.subheader("Diagrama de jerarquía")
+            st.subheader("Diagrama de jerarquía (zoom con rueda del ratón, arrastrar para mover)")
             dot = build_graph(dicc, selects, analizar_sql)
 
-            # Vista en pantalla con scroll horizontal
-            st.graphviz_chart(dot.source, use_container_width=False)
+            # Visor interactivo con zoom y pan
+            dot_escaped = json.dumps(dot.source)
+            viewer_html = f'''
+            <div style="border:1px solid #444; border-radius:8px; background:#fff; margin-bottom:10px;">
+                <div style="padding:8px; background:#f0f0f0; border-bottom:1px solid #ddd; border-radius:8px 8px 0 0;">
+                    <button onclick="panZoomInstance.zoomIn()" style="padding:5px 15px; margin-right:5px; cursor:pointer;">➕ Zoom In</button>
+                    <button onclick="panZoomInstance.zoomOut()" style="padding:5px 15px; margin-right:5px; cursor:pointer;">➖ Zoom Out</button>
+                    <button onclick="panZoomInstance.resetZoom(); panZoomInstance.center();" style="padding:5px 15px; margin-right:5px; cursor:pointer;">🔄 Reset</button>
+                    <button onclick="panZoomInstance.fit(); panZoomInstance.center();" style="padding:5px 15px; cursor:pointer;">📐 Ajustar</button>
+                </div>
+                <div id="graph-container" style="width:100%; height:70vh; overflow:hidden;"></div>
+            </div>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+            <script>
+                var panZoomInstance = null;
+                (function() {{
+                    var dotSrc = {dot_escaped};
+                    var viz = new Viz();
+                    viz.renderSVGElement(dotSrc).then(function(svg) {{
+                        var container = document.getElementById('graph-container');
+                        container.innerHTML = '';
+                        svg.setAttribute('width', '100%');
+                        svg.setAttribute('height', '100%');
+                        svg.style.background = 'white';
+                        container.appendChild(svg);
+                        panZoomInstance = svgPanZoom(svg, {{
+                            zoomEnabled: true,
+                            controlIconsEnabled: false,
+                            fit: true,
+                            center: true,
+                            minZoom: 0.1,
+                            maxZoom: 20,
+                            zoomScaleSensitivity: 0.3
+                        }});
+                    }}).catch(function(err) {{
+                        console.error('Viz.js error:', err);
+                        document.getElementById('graph-container').innerHTML = '<p style="color:red; padding:20px;">Error renderizando diagrama</p>';
+                    }});
+                }})();
+            </script>
+            '''
+            st.components.v1.html(viewer_html, height=550, scrolling=False)
 
-            # Generar PNG para descarga
-            try:
-                png_data = dot.pipe(format='png')
-                col_d1, col_d2 = st.columns(2)
-                with col_d1:
-                    st.download_button(
-                        label="📥 Descargar PNG",
-                        data=png_data,
-                        file_name="jerarquia_parrafos.png",
-                        mime="image/png"
-                    )
-                with col_d2:
-                    st.download_button(
-                        label="📄 Descargar DOT",
-                        data=dot.source,
-                        file_name="jerarquia_parrafos.dot",
-                        mime="text/vnd.graphviz"
-                    )
-            except Exception as e:
-                st.warning(f"Descarga PNG no disponible en este entorno. Usa DOT y conviértelo localmente.")
-                st.download_button(
-                    label="📄 Descargar DOT",
-                    data=dot.source,
-                    file_name="jerarquia_parrafos.dot",
-                    mime="text/vnd.graphviz"
-                )
+            # Descargar DOT
+            st.download_button(
+                label="📄 Descargar DOT",
+                data=dot.source,
+                file_name="jerarquia_parrafos.dot",
+                mime="text/vnd.graphviz",
+                help="Abre en https://dreampuf.github.io/GraphvizOnline/ para exportar PNG/SVG"
+            )
 
             if analizar_sql:
                 st.info(f"Bloques EXEC SQL encontrados: {sql_blocks}")
@@ -241,35 +265,61 @@ with mode[1]:
             st.metric("Llamadas detectadas", total)
             objetivo6 = (prog_objetivo or "").upper()[:6]
             dot_calls = construir_grafo_directorio(llamadasdir, objetivo6)
-            st.subheader("Diagrama de llamadas")
-            st.graphviz_chart(dot_calls.source, use_container_width=False)
+            st.subheader("Diagrama de llamadas (zoom con rueda del ratón, arrastrar para mover)")
             
-            # Descargar PNG y DOT
-            try:
-                png_calls = dot_calls.pipe(format='png')
-                col_c1, col_c2 = st.columns(2)
-                with col_c1:
-                    st.download_button(
-                        label="📥 Descargar PNG",
-                        data=png_calls,
-                        file_name="grafo_llamadas.png",
-                        mime="image/png"
-                    )
-                with col_c2:
-                    st.download_button(
-                        label="📄 Descargar DOT",
-                        data=dot_calls.source,
-                        file_name="grafo_llamadas.dot",
-                        mime="text/vnd.graphviz"
-                    )
-            except Exception as e:
-                st.warning("Descarga PNG no disponible. Usa DOT y conviértelo localmente.")
-                st.download_button(
-                    label="📄 Descargar DOT",
-                    data=dot_calls.source,
-                    file_name="grafo_llamadas.dot",
-                    mime="text/vnd.graphviz"
-                )
+            # Visor interactivo con zoom y pan
+            dot_calls_escaped = json.dumps(dot_calls.source)
+            viewer_calls_html = f'''
+            <div style="border:1px solid #444; border-radius:8px; background:#fff; margin-bottom:10px;">
+                <div style="padding:8px; background:#f0f0f0; border-bottom:1px solid #ddd; border-radius:8px 8px 0 0;">
+                    <button onclick="panZoomCalls.zoomIn()" style="padding:5px 15px; margin-right:5px; cursor:pointer;">➕ Zoom In</button>
+                    <button onclick="panZoomCalls.zoomOut()" style="padding:5px 15px; margin-right:5px; cursor:pointer;">➖ Zoom Out</button>
+                    <button onclick="panZoomCalls.resetZoom(); panZoomCalls.center();" style="padding:5px 15px; margin-right:5px; cursor:pointer;">🔄 Reset</button>
+                    <button onclick="panZoomCalls.fit(); panZoomCalls.center();" style="padding:5px 15px; cursor:pointer;">📐 Ajustar</button>
+                </div>
+                <div id="graph-calls-container" style="width:100%; height:70vh; overflow:hidden;"></div>
+            </div>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+            <script>
+                var panZoomCalls = null;
+                (function() {{
+                    var dotSrc = {dot_calls_escaped};
+                    var viz = new Viz();
+                    viz.renderSVGElement(dotSrc).then(function(svg) {{
+                        var container = document.getElementById('graph-calls-container');
+                        container.innerHTML = '';
+                        svg.setAttribute('width', '100%');
+                        svg.setAttribute('height', '100%');
+                        svg.style.background = 'white';
+                        container.appendChild(svg);
+                        panZoomCalls = svgPanZoom(svg, {{
+                            zoomEnabled: true,
+                            controlIconsEnabled: false,
+                            fit: true,
+                            center: true,
+                            minZoom: 0.1,
+                            maxZoom: 20,
+                            zoomScaleSensitivity: 0.3
+                        }});
+                    }}).catch(function(err) {{
+                        console.error('Viz.js error:', err);
+                        document.getElementById('graph-calls-container').innerHTML = '<p style="color:red; padding:20px;">Error renderizando diagrama</p>';
+                    }});
+                }})();
+            </script>
+            '''
+            st.components.v1.html(viewer_calls_html, height=550, scrolling=False)
+            
+            # Descargar DOT
+            st.download_button(
+                label="📄 Descargar DOT",
+                data=dot_calls.source,
+                file_name="grafo_llamadas.dot",
+                mime="text/vnd.graphviz",
+                help="Abre en https://dreampuf.github.io/GraphvizOnline/ para exportar PNG/SVG"
+            )
 
         finally:
             tmp_dir_obj.cleanup()
