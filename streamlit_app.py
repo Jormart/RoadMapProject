@@ -85,7 +85,7 @@ with mode[0]:
                     color = 'lightblue'
                     if analizar_sql and nodo in selects_por_parrafo:
                         color = 'lightgreen'
-                    s.node(nodo, style='filled', fillcolor=color)
+                    s.node(nodo, style='filled', fillcolor=color, fontcolor='black')
 
         for (origen, destino), numero in orden_llamadas.items():
             dot.edge(origen, destino, color='blue', style='solid', arrowsize='0.5', label=str(numero))
@@ -98,7 +98,7 @@ with mode[0]:
                     if sql_types and tipo_label not in sql_types:
                         continue
                     nodo_select = f"{parrafo}_SQL_{idx+1}"
-                    dot.node(nodo_select, label=sel, shape='note', style='filled', fillcolor='yellow')
+                    dot.node(nodo_select, label=sel, shape='note', style='filled', fillcolor='yellow', fontcolor='black')
                     dot.edge(parrafo, nodo_select, style='dashed', color='orange')
 
         return dot
