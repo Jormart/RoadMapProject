@@ -1,30 +1,44 @@
 
 # RoadMapProject
 
-Get quick visual insight into old legacy COBOL
+Análisis visual de código COBOL legacy
 
-## Streamlit App
-- Purpose: Upload a COBOL program and visualize paragraph calls and optional embedded SQL.
-- Entry: [app.py](c:\Users\GBHRZRL\Desktop\SRC\RoadMapProject\app.py)
-- Requirements: [requirements.txt](c:\Users\GBHRZRL\Desktop\SRC\RoadMapProject\requirements.txt)
+## Interfaz Streamlit
 
-### Run locally
+Interfaz web simplificada para analizar programas COBOL con dos funcionalidades principales:
+
+### 1. Jerarquía de Párrafos
+- Analiza la estructura de llamadas entre párrafos (PERFORM)
+- Identifica tablas DB2 utilizadas en cada párrafo (EXEC SQL)
+- Muestra un diagrama visual de la jerarquía completa
+
+### 2. Llamadas entre Programas
+- Detecta llamadas a módulos externos (CALL)
+- Identifica invocaciones CICS (LINK, START, INVOKE)
+- Muestra el flujo de llamadas a nivel de directorio
+
+## Uso
+
+### Ejecución local
 ```bash
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run streamlit_app.py
 ```
 
-### Deploy on Streamlit Cloud
-- Push this repo to GitHub.
-- In Streamlit Cloud, select the repo and set `app.py` as the entry.
-- Ensure Python version supports the pinned packages.
+### Despliegue en Streamlit Cloud
+1. Sube el repositorio a GitHub
+2. En Streamlit Cloud, selecciona el repo y configura `streamlit_app.py` como entrada
+3. Asegúrate de que la versión de Python soporte los paquetes en requirements.txt
 
-### How it works
-- Core analysis from `RoadMap.01.py`: parses `PROCEDURE DIVISION`, detects paragraph starts and `PERFORM` calls; optionally parses `EXEC SQL ... END-EXEC` blocks and extracts statements.
-- The app renders:
-	- Text tree of calls via `imprimir_arbol_llamadas()`.
-	- Inline SVG graph via a rebuilt `graphviz` diagram (no PDF or `os.startfile`).
+## Componentes
 
-### Notes
-- The heuristics for detecting paragraphs are simplified and may need tuning per codebase.
-- PDF graph generation in `RoadMap.01.py` is bypassed in the app to be cloud-friendly.
+- **RoadMap.07.py**: Analizador de jerarquía de párrafos y SQL
+- **RoadMapCalls.05.py**: Analizador de llamadas entre programas
+- **streamlit_app.py**: Interfaz web unificada
+
+## Características
+
+- Sin instalación de Graphviz requerida (usa Python wrapper)
+- Descarga de diagramas en formato SVG (vectorial, zoom sin pérdida)
+- Interfaz simple y directa sin opciones complejas
+- Compatible con archivos .cob, .cbl, .txt y .zip

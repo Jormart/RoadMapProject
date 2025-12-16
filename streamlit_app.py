@@ -24,32 +24,19 @@ mode = st.tabs(["Jerarquía de párrafos", "Llamadas entre programas"])
 
 # --- Tab 1: Jerarquía de párrafos (RoadMap.07) ---
 with mode[0]:
+    st.markdown("Analiza la jerarquía de llamadas entre párrafos y las tablas DB2 utilizadas.")
     uploaded = st.file_uploader("Sube un archivo COBOL (.cob/.txt)", type=["cob", "txt"])
-    col1, col2, col3 = st.columns([1,1,1])
+    col1, col2 = st.columns([2,1])
     with col1:
-        analizar_sql = st.checkbox("Analizar SQL (EXEC SQL)", value=False)
-    with col2:
         parrafo_inicio = st.text_input("Párrafo inicial (opcional)", value="")
-    with col3:
-        run_btn = st.button("Analizar")
+    with col2:
+        analizar_sql = st.checkbox("Incluir tablas DB2", value=True)
+    
+    run_btn = st.button("Analizar jerarquía", type="primary") 
 
-    colA, colB, colC = st.columns([1,1,1])
-    with colA:
-        rankdir_opt = st.selectbox("Orientación", options=["Vertical (TB)", "Horizontal (LR)"], index=0)
-    with colB:
-        nodesep = st.slider("Separación horizontal", min_value=0.2, max_value=2.0, value=0.6, step=0.1)
-    with colC:
-        ranksep = st.slider("Separación vertical", min_value=0.2, max_value=2.0, value=0.6, step=0.1)
-
-    colF1, colF2 = st.columns([1,1])
-    with colF1:
-        max_depth = st.slider("Profundidad máxima (recursión)", min_value=1, max_value=20, value=10, step=1)
-    with colF2:
-        sql_types = st.multiselect("Tipos SQL a mostrar", options=["SELECT", "INSERT", "UPDATE", "DELETE", "OPEN CURSOR", "CLOSE CURSOR", "FETCH CURSOR", "COMMIT", "ROLLBACK"], default=["SELECT", "INSERT", "UPDATE", "DELETE", "OPEN CURSOR", "CLOSE CURSOR", "FETCH CURSOR"]) 
-
-    def build_graph(diccionario, selects_por_parrafo, analizar_sql=False, rankdir='TB', nodesep_val=0.6, ranksep_val=0.6):
+    def build_graph(diccionario, selects_por_parrafo, analizar_sql=False):
         dot = Digraph(comment='Llamadas COBOL', format='svg', engine='dot')
-        dot.attr(dpi='300', rankdir=rankdir, nodesep=str(nodesep_val), ranksep=str(ranksep_val), bgcolor='white')
+        dot.attr(dpi='300', rankdir='TB', nodesep='0.6', ranksep='0.8', bgcolor='white')
         dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='11')
 
         visitados = set()
@@ -62,8 +49,6 @@ with mode[0]:
                 return
             visitados.add(nodo)
             niveles[nodo] = nivel
-            if nivel >= max_depth:
-                return
             for hijo in diccionario.get(nodo, []):
                 orden_llamadas[(nodo, hijo)] = contador[0]
                 contador[0] += 1
@@ -93,13 +78,23 @@ with mode[0]:
         if analizar_sql:
             for parrafo, selects in selects_por_parrafo.items():
                 for idx, sel in enumerate(selects):
-                    # Filtrar por tipo seleccionado
-                    tipo_label = sel.split()[0]
-                    if sql_types and tipo_label not in sql_types:
-                        continue
                     nodo_select = f"{parrafo}_SQL_{idx+1}"
-                    dot.node(nodo_select, label=sel, shape='note', style='filled', fillcolor='yellow', fontcolor='black')
-                    dot.edge(parrafo, nodo_select, style='dashed', color='orange')
+                    # Estilizar según tipo SQL
+                    tipo = sel.split()[0].upper()
+                    if tipo == 'SELECT' or 'OPEN' in tipo or 'FETCH' in tipo:
+                        fill = '#9FC5E8'  # azul claro
+                        shape = 'cylinder'
+                        edge_color = '#3D85C6'
+                    elif tipo in ('INSERT', 'UPDATE', 'DELETE'):
+                        fill = '#F6B26B'  # naranja claro
+                        shape = 'component'
+                        edge_color = '#E69138'
+                    else:
+                        fill = '#FFD966'  # amarillo para otros (COMMIT/ROLLBACK/CLOSE)
+                        shape = 'note'
+                        edge_color = 'orange'
+                    dot.node(nodo_select, label=sel, shape=shape, style='filled', fillcolor=fill, fontcolor='black')
+                    dot.edge(parrafo, nodo_select, style='dashed', color=edge_color)
 
         return dot
 
@@ -127,35 +122,19 @@ with mode[0]:
             if analizar_sql and isinstance(selects, dict):
                 selects = {k: sorted(list(set(v))) for k, v in selects.items()}
 
-            st.subheader("Jerarquía de llamadas")
-            tree_text = build_tree_text(dicc, selects)
-            st.code(tree_text, language="text")
-
-            st.subheader("Diagrama de llamadas")
-            rd = 'TB' if rankdir_opt.startswith('Vertical') else 'LR'
-            dot = build_graph(dicc, selects, analizar_sql, rankdir=rd, nodesep_val=nodesep, ranksep_val=ranksep)
+            st.subheader("Diagrama de jerarquía")
+            dot = build_graph(dicc, selects, analizar_sql)
             
             # Mostrar gráfico con mayor altura
             st.graphviz_chart(dot.source, use_container_width=True)
             
-            # Ofrecer descarga directa del SVG (se puede abrir en navegador y hacer zoom)
-            col_btn1, col_btn2 = st.columns(2)
-            with col_btn1:
-                st.download_button(
-                    label="📥 Descargar SVG (recomendado)",
-                    data=dot.source,
-                    file_name="jerarquia_parrafos.svg",
-                    mime="image/svg+xml",
-                    help="Archivo vectorial que se puede abrir en navegador y hacer zoom sin pérdida de calidad"
-                )
-            with col_btn2:
-                st.download_button(
-                    label="📄 Descargar DOT",
-                    data=dot.source,
-                    file_name="jerarquia_parrafos.dot",
-                    mime="text/vnd.graphviz",
-                    help="Archivo fuente Graphviz para edición"
-                )
+            # Descargar fuente DOT (SVG requiere binarios Graphviz, no disponibles en Cloud)
+            st.download_button(
+                label="📥 Descargar diagrama (DOT)",
+                data=dot.source,
+                file_name="jerarquia_parrafos.dot",
+                mime="text/vnd.graphviz"
+            )
 
             if analizar_sql:
                 st.info(f"Bloques EXEC SQL encontrados: {sql_blocks}")
@@ -165,10 +144,10 @@ with mode[0]:
 
 # --- Tab 2: Llamadas entre programas (RoadMapCalls.05) ---
 with mode[1]:
-    st.markdown("Analiza llamadas externas (CALL y CICS) a nivel de directorio.")
-    prog_objetivo = st.text_input("Programa objetivo (primeros 6 chars)", value="")
+    st.markdown("Analiza las llamadas a módulos externos (CALL y CICS LINK/START/INVOKE).")
     multi = st.file_uploader("Sube múltiples fuentes COBOL o un ZIP", type=["cob", "cbl", "cobol", "txt", "zip"], accept_multiple_files=True)
-    run_calls = st.button("Analizar llamadas")
+    prog_objetivo = st.text_input("Programa objetivo (opcional - 6 chars)", value="", placeholder="ej: ABC123")
+    run_calls = st.button("Analizar llamadas", type="primary")
 
     def preparar_fuentes_archivos(files):
         temp_dir = tempfile.TemporaryDirectory()
@@ -234,36 +213,22 @@ with mode[1]:
                         if destino:
                             llamadasdir[origen].append(destino.upper())
 
-            st.subheader("Resumen de llamadas detectadas")
             total = sum(len(v) for v in llamadasdir.values())
-            st.write(f"Total de llamadas detectadas: {total}")
+            st.metric("Llamadas detectadas", total)
             objetivo6 = (prog_objetivo or "").upper()[:6]
             dot_calls = construir_grafo_directorio(llamadasdir, objetivo6)
-            st.subheader("Grafo de llamadas (directorio)")
+            st.subheader("Diagrama de llamadas")
             st.graphviz_chart(dot_calls.source, use_container_width=True)
             
-            # Botones de descarga
-            col_c1, col_c2 = st.columns(2)
-            with col_c1:
-                st.download_button(
-                    label="📥 Descargar SVG",
-                    data=dot_calls.source,
-                    file_name="grafo_llamadas.svg",
-                    mime="image/svg+xml",
-                    help="Archivo vectorial escalable"
-                )
-            with col_c2:
-                st.download_button(
-                    label="📄 Descargar DOT",
-                    data=dot_calls.source,
-                    file_name="grafo_llamadas.dot",
-                    mime="text/vnd.graphviz"
-                )
+            # Descargar fuente DOT
+            st.download_button(
+                label="📥 Descargar diagrama (DOT)",
+                data=dot_calls.source,
+                file_name="grafo_llamadas.dot",
+                mime="text/vnd.graphviz"
+            )
 
         finally:
             tmp_dir_obj.cleanup()
 
-st.markdown("---")
-st.markdown("Notas:")
-st.markdown("- En nube se muestran gráficos inline (SVG); no se generan PDFs ni se abren archivos.")
-st.markdown("- El análisis de párrafos usa heurísticas que pueden requerir ajuste según el estilo COBOL.")
+
