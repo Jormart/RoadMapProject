@@ -281,81 +281,76 @@ with mode[1]:
         - Tablas DB2 como cilindros (READ=azul, WRITE=naranja)
         """
         dot = Digraph(comment='Diagrama XPLAIN', format='png', engine='dot')
-        dot.attr(dpi='300', rankdir='LR', nodesep='0.6', ranksep='1.5', splines='ortho', bgcolor='white')
-        dot.attr('node', fontname='Helvetica', fontsize='10', fontcolor='black')
+        dot.attr(dpi='300', rankdir='LR', nodesep='0.3', ranksep='1.0', splines='ortho', bgcolor='white')
+        dot.attr('node', fontname='Helvetica', fontsize='9', fontcolor='black')
         
-        # Subgrafo izquierdo: Llamantes
-        if llamantes:
-            with dot.subgraph(name='cluster_llamantes') as c:
-                c.attr(label='Llamantes', style='rounded', color='#E8E8E8', bgcolor='#FAFAFA')
-                for llamante in llamantes:
-                    c.node(f"in_{llamante}", llamante, shape='box', style='filled,bold', 
-                           fillcolor='#FFE6E6', color='#CC0000', penwidth='2')
-        
-        # Subgrafo izquierdo: Tablas DB2 de lectura
+        # Separar tablas READ y WRITE
         tablas_read = [t for t, tipo in tablas_db2.items() if tipo == 'READ']
-        if tablas_read:
-            with dot.subgraph(name='cluster_db2_read') as c:
-                c.attr(label='Tablas DB2 (Lectura)', style='rounded', color='#E8E8E8', bgcolor='#F0F8FF')
-                for tabla in tablas_read:
-                    label = f"{tabla}\n(SELECT)"
-                    c.node(f"db2_{tabla}", label, shape='cylinder', style='filled', 
-                           fillcolor='#9FC5E8', color='#3D85C6', penwidth='1.5')
+        tablas_write = [t for t, tipo in tablas_db2.items() if tipo == 'WRITE']
         
-        # Nodo central: Programa objetivo
-        with dot.subgraph(name='cluster_objetivo') as c:
-            c.attr(label='', style='invis')
-            c.node(prog_objetivo, f"{prog_objetivo}\n\nPrograma\nObjetivo", shape='box', style='filled,bold',
-                   fillcolor='#B4C7E7', color='#000000', penwidth='3', width='2', height='1.5', fontsize='14')
-        
-        # Subgrafo derecho: Programas llamados
+        # Separar llamados normales y CICS
         llamados_prog = [l for l in llamados if not l.startswith('CICS-')]
         llamados_cics = [l for l in llamados if l.startswith('CICS-')]
         
-        if llamados_prog:
-            with dot.subgraph(name='cluster_llamados') as c:
-                c.attr(label='Programas Llamados', style='rounded', color='#E8E8E8', bgcolor='#F5F5F5')
-                for prog in llamados_prog:
-                    c.node(f"out_{prog}", prog, shape='box', style='filled', 
-                           fillcolor='#E3F2FD', color='#1976D2', penwidth='1.5')
+        # COLUMNA IZQUIERDA: Llamantes + Tablas READ
+        with dot.subgraph(name='cluster_left') as left:
+            left.attr(label='', style='invis', rank='same')
+            
+            # Llamantes (si los hay)
+            if llamantes:
+                for llamante in llamantes:
+                    left.node(f"in_{llamante}", llamante, shape='box', style='filled,bold', 
+                              fillcolor='#FFE6E6', color='#CC0000', penwidth='2', fontsize='9')
+            
+            # Tablas DB2 de lectura (SELECT)
+            for tabla in tablas_read:
+                left.node(f"db2_{tabla}", f"{tabla}\nSELECT", shape='cylinder', style='filled', 
+                          fillcolor='#9FC5E8', color='#3D85C6', penwidth='1.5', fontsize='8')
         
-        if llamados_cics:
-            with dot.subgraph(name='cluster_cics') as c:
-                c.attr(label='Transacciones CICS', style='rounded', color='#E8E8E8', bgcolor='#FFF8E1')
-                for prog in llamados_cics:
-                    nombre = prog.replace('CICS-', '')
-                    c.node(f"out_{prog}", nombre, shape='cylinder', style='filled', 
-                           fillcolor='#FFD966', color='#F57C00', penwidth='1.5')
+        # COLUMNA CENTRAL: Programa objetivo
+        dot.node(prog_objetivo, f"{prog_objetivo}\n───────────\nPrograma\nObjetivo", 
+                 shape='box', style='filled,bold', fillcolor='white', color='#000000', 
+                 penwidth='3', width='1.8', height='1.2', fontsize='12')
         
-        # Subgrafo derecho: Tablas DB2 de escritura
-        tablas_write = [t for t, tipo in tablas_db2.items() if tipo == 'WRITE']
-        if tablas_write:
-            with dot.subgraph(name='cluster_db2_write') as c:
-                c.attr(label='Tablas DB2 (Escritura)', style='rounded', color='#E8E8E8', bgcolor='#FFF3E0')
-                for tabla in tablas_write:
-                    label = f"{tabla}\n(INSERT/UPDATE)"
-                    c.node(f"db2_{tabla}", label, shape='cylinder', style='filled', 
-                           fillcolor='#F6B26B', color='#E65100', penwidth='1.5')
+        # COLUMNA DERECHA: Programas llamados + Tablas WRITE
+        with dot.subgraph(name='cluster_right') as right:
+            right.attr(label='', style='invis', rank='same')
+            
+            # Programas llamados
+            for prog in llamados_prog:
+                right.node(f"out_{prog}", prog, shape='box', style='filled', 
+                           fillcolor='#E3F2FD', color='#1976D2', penwidth='1.5', fontsize='9')
+            
+            # Transacciones CICS
+            for prog in llamados_cics:
+                nombre = prog.replace('CICS-', '')
+                right.node(f"out_{prog}", nombre, shape='cylinder', style='filled', 
+                           fillcolor='#FFD966', color='#F57C00', penwidth='1.5', fontsize='8')
+            
+            # Tablas DB2 de escritura (INSERT/UPDATE)
+            for tabla in tablas_write:
+                right.node(f"db2_{tabla}", f"{tabla}\nINSERT/UPD", shape='cylinder', style='filled', 
+                           fillcolor='#F6B26B', color='#E65100', penwidth='1.5', fontsize='8')
         
-        # Edges: Llamantes -> Objetivo
+        # EDGES: Llamantes -> Objetivo
         if llamantes:
             for llamante in llamantes:
-                dot.edge(f"in_{llamante}", prog_objetivo, color='#CC0000', penwidth='1.5', arrowsize='0.8')
+                dot.edge(f"in_{llamante}", prog_objetivo, color='#CC0000', penwidth='1.5', arrowsize='0.7')
         
-        # Edges: Tablas READ -> Objetivo
+        # EDGES: Tablas READ -> Objetivo
         for tabla in tablas_read:
-            dot.edge(f"db2_{tabla}", prog_objetivo, color='#3D85C6', penwidth='1.2', arrowsize='0.7')
+            dot.edge(f"db2_{tabla}", prog_objetivo, color='#3D85C6', penwidth='1.2', arrowsize='0.6')
         
-        # Edges: Objetivo -> Programas llamados
+        # EDGES: Objetivo -> Programas llamados
         for prog in llamados_prog:
-            dot.edge(prog_objetivo, f"out_{prog}", color='#1976D2', penwidth='1.5', arrowsize='0.8')
+            dot.edge(prog_objetivo, f"out_{prog}", color='#1976D2', penwidth='1.5', arrowsize='0.7')
         
         for prog in llamados_cics:
-            dot.edge(prog_objetivo, f"out_{prog}", color='#F57C00', penwidth='1.5', arrowsize='0.8')
+            dot.edge(prog_objetivo, f"out_{prog}", color='#F57C00', penwidth='1.5', arrowsize='0.7')
         
-        # Edges: Objetivo -> Tablas WRITE
+        # EDGES: Objetivo -> Tablas WRITE
         for tabla in tablas_write:
-            dot.edge(prog_objetivo, f"db2_{tabla}", color='#E65100', penwidth='1.2', arrowsize='0.7')
+            dot.edge(prog_objetivo, f"db2_{tabla}", color='#E65100', penwidth='1.2', arrowsize='0.6')
         
         return dot
 
