@@ -134,33 +134,31 @@ with mode[0]:
             st.graphviz_chart(dot.source, use_container_width=True)
 
             # Render scrollable con Viz.js (solo visualización)
-            st.markdown(
-                f"""
+            dot_json_str = json.dumps(dot.source)
+            viz_html = """
                 <div style="border:1px solid #ccc; border-radius:6px; overflow:auto; height:80vh;">
                   <div id="viz-parrafos"></div>
                 </div>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
                 <script>
-                  (function(){{
-                    const src = {dot_json};
-                    const dot = src;
-                    try {{
+                  (function(){
+                    const dotSrc = DOT_SOURCE_PLACEHOLDER;
+                    try {
                       const viz = new Viz();
-                      viz.renderSVGElement(dot).then(function(svg) {{
+                      viz.renderSVGElement(dotSrc).then(function(svg) {
                         const el = document.getElementById('viz-parrafos');
                         el.innerHTML = '';
                         el.appendChild(svg);
                         svg.style.width = '1500px';
                         svg.style.height = 'auto';
                         svg.style.background = 'white';
-                      }}).catch(function(e){{ console.error(e); }});
-                    }} catch(e) {{ console.error(e); }}
-                  }})();
+                      }).catch(function(e){ console.error(e); });
+                    } catch(e) { console.error(e); }
+                  })();
                 </script>
-                """.replace("{dot_json}", json.dumps(dot.source)),
-                unsafe_allow_html=True
-            )
+                """.replace("DOT_SOURCE_PLACEHOLDER", dot_json_str)
+            st.markdown(viz_html, unsafe_allow_html=True)
 
             # Descargar fuente DOT (SVG requiere binarios Graphviz, no disponibles en Cloud)
             st.download_button(
