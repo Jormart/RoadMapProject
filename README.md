@@ -3,34 +3,28 @@
 
 Get quick visual insight into old legacy COBOL
 
-## Descripción
-Este proyecto permite analizar programas COBOL para extraer:
-- Jerarquía de llamadas entre párrafos y sentencias SQL embebidas (DB2)
-- Llamadas a módulos externos (CALLs/FEXXX) y dependencias tipo XPLAIN
-Genera diagramas y archivos de salida para facilitar la comprensión de sistemas legacy.
+## Streamlit App
+- Purpose: Upload a COBOL program and visualize paragraph calls and optional embedded SQL.
+- Entry: [app.py](c:\Users\GBHRZRL\Desktop\SRC\RoadMapProject\app.py)
+- Requirements: [requirements.txt](c:\Users\GBHRZRL\Desktop\SRC\RoadMapProject\requirements.txt)
 
-## Interfaz gráfica (Streamlit)
-Desde diciembre 2025, el análisis se realiza mediante una interfaz web local con Streamlit.
-
-### Requisitos previos
-- Python 3.8+
-- Instalar dependencias:
-	```powershell
-	pip install streamlit graphviz
-	```
-- Instalar Graphviz (binario) y asegurarse de que `dot` está en el PATH ([descargar aquí](https://graphviz.org/download/)).
-
-### Ejecución
-```powershell
-streamlit run main.py
+### Run locally
+```bash
+pip install -r requirements.txt
+streamlit run app.py
 ```
-Se abrirá una web local donde puedes subir un archivo COBOL y elegir el tipo de análisis.
 
-### Salidas
-- Archivos PDF y TXT generados en el directorio del proyecto.
-- La salida textual del análisis se muestra en la web.
+### Deploy on Streamlit Cloud
+- Push this repo to GitHub.
+- In Streamlit Cloud, select the repo and set `app.py` as the entry.
+- Ensure Python version supports the pinned packages.
 
-### Scripts principales
-- `RoadMap.07.py`: análisis de párrafos y SQL (DB2)
-- `RoadMapCalls.05.py`: análisis de llamadas externas (CALLs/FEXXX, XPLAIN)
+### How it works
+- Core analysis from `RoadMap.01.py`: parses `PROCEDURE DIVISION`, detects paragraph starts and `PERFORM` calls; optionally parses `EXEC SQL ... END-EXEC` blocks and extracts statements.
+- The app renders:
+	- Text tree of calls via `imprimir_arbol_llamadas()`.
+	- Inline SVG graph via a rebuilt `graphviz` diagram (no PDF or `os.startfile`).
 
+### Notes
+- The heuristics for detecting paragraphs are simplified and may need tuning per codebase.
+- PDF graph generation in `RoadMap.01.py` is bypassed in the app to be cloud-friendly.
