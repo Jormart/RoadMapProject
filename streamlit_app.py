@@ -281,32 +281,32 @@ with mode[1]:
         - Tablas DB2 como cilindros (READ=azul, WRITE=naranja)
         """
         dot = Digraph(comment='Diagrama XPLAIN', format='png', engine='dot')
-        dot.attr(dpi='300', rankdir='LR', nodesep='0.6', ranksep='1.5', splines='ortho', bgcolor='white')
-        dot.attr('node', fontname='Helvetica', fontsize='10', fontcolor='black')
+        dot.attr(dpi='300', rankdir='LR', nodesep='0.4', ranksep='1.2', splines='ortho', bgcolor='white')
+        dot.attr('node', fontname='Helvetica', fontsize='11', fontcolor='black', width='1.5', height='0.6')
         
         # Subgrafo izquierdo: Llamantes
         if llamantes:
             with dot.subgraph(name='cluster_llamantes') as c:
-                c.attr(label='Llamantes', style='rounded', color='#E8E8E8', bgcolor='#FAFAFA')
+                c.attr(label='Llamantes', style='rounded', color='#E8E8E8', bgcolor='#FAFAFA', fontsize='12')
                 for llamante in llamantes:
                     c.node(f"in_{llamante}", llamante, shape='box', style='filled,bold', 
-                           fillcolor='#FFE6E6', color='#CC0000', penwidth='2')
+                           fillcolor='#FFE6E6', color='#CC0000', penwidth='2', width='1.8')
         
         # Subgrafo izquierdo: Tablas DB2 de lectura
         tablas_read = [t for t, tipo in tablas_db2.items() if tipo == 'READ']
         if tablas_read:
             with dot.subgraph(name='cluster_db2_read') as c:
-                c.attr(label='Tablas DB2 (Lectura)', style='rounded', color='#E8E8E8', bgcolor='#F0F8FF')
+                c.attr(label='Tablas DB2 (Lectura)', style='rounded', color='#E8E8E8', bgcolor='#F0F8FF', fontsize='12')
                 for tabla in tablas_read:
                     label = f"{tabla}\n(SELECT)"
                     c.node(f"db2_{tabla}", label, shape='cylinder', style='filled', 
-                           fillcolor='#9FC5E8', color='#3D85C6', penwidth='1.5')
+                           fillcolor='#9FC5E8', color='#3D85C6', penwidth='1.5', width='1.6')
         
         # Nodo central: Programa objetivo
         with dot.subgraph(name='cluster_objetivo') as c:
             c.attr(label='', style='invis')
             c.node(prog_objetivo, f"{prog_objetivo}\n\nPrograma\nObjetivo", shape='box', style='filled,bold',
-                   fillcolor='#B4C7E7', color='#000000', penwidth='3', width='2', height='1.5', fontsize='14')
+                   fillcolor='#B4C7E7', color='#000000', penwidth='3', width='2.2', height='1.6', fontsize='14')
         
         # Subgrafo derecho: Programas llamados
         llamados_prog = [l for l in llamados if not l.startswith('CICS-')]
@@ -314,28 +314,28 @@ with mode[1]:
         
         if llamados_prog:
             with dot.subgraph(name='cluster_llamados') as c:
-                c.attr(label='Programas Llamados', style='rounded', color='#E8E8E8', bgcolor='#F5F5F5')
+                c.attr(label='Programas Llamados', style='rounded', color='#E8E8E8', bgcolor='#F5F5F5', fontsize='12')
                 for prog in llamados_prog:
                     c.node(f"out_{prog}", prog, shape='box', style='filled', 
-                           fillcolor='#E3F2FD', color='#1976D2', penwidth='1.5')
+                           fillcolor='#E3F2FD', color='#1976D2', penwidth='1.5', width='1.8')
         
         if llamados_cics:
             with dot.subgraph(name='cluster_cics') as c:
-                c.attr(label='Transacciones CICS', style='rounded', color='#E8E8E8', bgcolor='#FFF8E1')
+                c.attr(label='Transacciones CICS', style='rounded', color='#E8E8E8', bgcolor='#FFF8E1', fontsize='12')
                 for prog in llamados_cics:
                     nombre = prog.replace('CICS-', '')
                     c.node(f"out_{prog}", nombre, shape='cylinder', style='filled', 
-                           fillcolor='#FFD966', color='#F57C00', penwidth='1.5')
+                           fillcolor='#FFD966', color='#F57C00', penwidth='1.5', width='1.6')
         
         # Subgrafo derecho: Tablas DB2 de escritura
         tablas_write = [t for t, tipo in tablas_db2.items() if tipo == 'WRITE']
         if tablas_write:
             with dot.subgraph(name='cluster_db2_write') as c:
-                c.attr(label='Tablas DB2 (Escritura)', style='rounded', color='#E8E8E8', bgcolor='#FFF3E0')
+                c.attr(label='Tablas DB2 (Escritura)', style='rounded', color='#E8E8E8', bgcolor='#FFF3E0', fontsize='12')
                 for tabla in tablas_write:
                     label = f"{tabla}\n(INSERT/UPDATE)"
                     c.node(f"db2_{tabla}", label, shape='cylinder', style='filled', 
-                           fillcolor='#F6B26B', color='#E65100', penwidth='1.5')
+                           fillcolor='#F6B26B', color='#E65100', penwidth='1.5', width='1.6')
         
         # Edges: Llamantes -> Objetivo
         if llamantes:
