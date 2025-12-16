@@ -49,8 +49,8 @@ with mode[0]:
 
     def build_graph(diccionario, selects_por_parrafo, analizar_sql=False, rankdir='TB', nodesep_val=0.6, ranksep_val=0.6):
         dot = Digraph(comment='Llamadas COBOL', format='svg', engine='dot')
-        dot.attr(dpi='150', rankdir=rankdir, nodesep=str(nodesep_val), ranksep=str(ranksep_val))
-        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='10')
+        dot.attr(dpi='300', rankdir=rankdir, nodesep=str(nodesep_val), ranksep=str(ranksep_val), bgcolor='white')
+        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='11')
 
         visitados = set()
         niveles = {}
@@ -134,60 +134,28 @@ with mode[0]:
             st.subheader("Diagrama de llamadas")
             rd = 'TB' if rankdir_opt.startswith('Vertical') else 'LR'
             dot = build_graph(dicc, selects, analizar_sql, rankdir=rd, nodesep_val=nodesep, ranksep_val=ranksep)
-            st.graphviz_chart(dot.source)
-
-            # Render client-side with viz.js for zoom and PNG export
-            import streamlit.components.v1 as components
-            dot_src = dot.source.replace("`", "\\`")
-            components.html(
-                    f"""
-                    <div id='viz_parrafos_container' style='border:1px solid #333; border-radius:8px; overflow:auto; max-height:600px;'>
-                        <div id='viz_parrafos'></div>
-                    </div>
-                    <button id='dlpng_parrafos' style='margin-top:8px;'>Descargar PNG</button>
-                    <script src='https://unpkg.com/viz.js@2.1.2/dist/viz.js'></script>
-                    <script src='https://unpkg.com/viz.js@2.1.2/dist/lite.render.js'></script>
-                    <script>
-                        const dotSrc = `{dot_src}`;
-                        const viz = new Viz();
-                        viz.renderSVGElement(dotSrc).then(svg => {{
-                            const cont = document.getElementById('viz_parrafos');
-                            cont.innerHTML='';
-                            cont.appendChild(svg);
-                        }});
-                        document.getElementById('dlpng_parrafos').onclick = async () => {{
-                            const svgEl = document.querySelector('#viz_parrafos svg');
-                            if(!svgEl) return;
-                            const xml = new XMLSerializer().serializeToString(svgEl);
-                            const svg64 = btoa(unescape(encodeURIComponent(xml)));
-                            const image64 = 'data:image/svg+xml;base64,' + svg64;
-                            const img = new Image();
-                            img.onload = function(){{
-                                const canvas = document.createElement('canvas');
-                                canvas.width = img.width; canvas.height = img.height;
-                                const ctx = canvas.getContext('2d');
-                                ctx.drawImage(img, 0, 0);
-                                const link = document.createElement('a');
-                                link.download = 'jerarquia_parrafos.png';
-                                link.href = canvas.toDataURL('image/png');
-                                link.click();
-                            }};
-                            img.src = image64;
-                        }};
-                    </script>
-                    """,
-                    height=700,
-                    scrolling=True
-            )
-
-            # En Streamlit Cloud, graphviz backend binarios pueden no estar disponibles.
-            # Evitamos dot.pipe/render y ofrecemos descarga del DOT fuente.
-            st.download_button(
-                label="Descargar DOT",
-                data=dot.source,
-                file_name="jerarquia_parrafos.dot",
-                mime="text/vnd.graphviz"
-            )
+            
+            # Mostrar gráfico con mayor altura
+            st.graphviz_chart(dot.source, use_container_width=True)
+            
+            # Ofrecer descarga directa del SVG (se puede abrir en navegador y hacer zoom)
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                st.download_button(
+                    label="📥 Descargar SVG (recomendado)",
+                    data=dot.source,
+                    file_name="jerarquia_parrafos.svg",
+                    mime="image/svg+xml",
+                    help="Archivo vectorial que se puede abrir en navegador y hacer zoom sin pérdida de calidad"
+                )
+            with col_btn2:
+                st.download_button(
+                    label="📄 Descargar DOT",
+                    data=dot.source,
+                    file_name="jerarquia_parrafos.dot",
+                    mime="text/vnd.graphviz",
+                    help="Archivo fuente Graphviz para edición"
+                )
 
             if analizar_sql:
                 st.info(f"Bloques EXEC SQL encontrados: {sql_blocks}")
@@ -220,18 +188,18 @@ with mode[1]:
 
     def construir_grafo_directorio(llamadasdir, objetivo6):
         dot = Digraph(comment='Llamadas COBOL (directorio)', format='svg', engine='dot')
-        dot.attr(dpi='150', rankdir='TB', nodesep='0.5', ranksep='0.5', splines='ortho')
-        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='10')
+        dot.attr(dpi='300', rankdir='TB', nodesep='0.5', ranksep='0.5', splines='ortho', bgcolor='white')
+        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='11', fontcolor='black')
 
         # nodo objetivo
         if objetivo6:
-            dot.node(objetivo6, objetivo6, style='filled', fillcolor='#B4C7E7', shape='box')
+            dot.node(objetivo6, objetivo6, style='filled', fillcolor='#B4C7E7', shape='box', fontcolor='black')
 
         # llamantes (-> objetivo)
         for llamante, llamados in llamadasdir.items():
             for destino in set(llamados):
                 if objetivo6 and (destino[:6] == objetivo6 or destino[:5] == objetivo6[:5]):
-                    dot.node(llamante, llamante, style='filled', fillcolor='#A4C2F4', shape='component')
+                    dot.node(llamante, llamante, style='filled', fillcolor='#A4C2F4', shape='component', fontcolor='black')
                     dot.edge(llamante, objetivo6, color='#3D85C6', arrowsize='0.7')
 
         # llamados (objetivo -> destino)
@@ -242,7 +210,7 @@ with mode[1]:
                 if str(destino).startswith('CICS-'):
                     color = '#FFD966'
                     shape = 'cylinder'
-                dot.node(destino, destino, style='filled', fillcolor=color, shape=shape)
+                dot.node(destino, destino, style='filled', fillcolor=color, shape=shape, fontcolor='black')
                 dot.edge(objetivo6, destino, color='#3D85C6', arrowsize='0.7')
 
         return dot
@@ -272,50 +240,25 @@ with mode[1]:
             objetivo6 = (prog_objetivo or "").upper()[:6]
             dot_calls = construir_grafo_directorio(llamadasdir, objetivo6)
             st.subheader("Grafo de llamadas (directorio)")
-            st.graphviz_chart(dot_calls.source)
-
-            import streamlit.components.v1 as components
-            dot_calls_src = dot_calls.source.replace("`", "\\`")
-            components.html(
-                    f"""
-                    <div id='viz_calls_container' style='border:1px solid #333; border-radius:8px; overflow:auto; max-height:600px;'>
-                        <div id='viz_calls'></div>
-                    </div>
-                    <button id='dlpng_calls' style='margin-top:8px;'>Descargar PNG</button>
-                    <script src='https://unpkg.com/viz.js@2.1.2/dist/viz.js'></script>
-                    <script src='https://unpkg.com/viz.js@2.1.2/dist/lite.render.js'></script>
-                    <script>
-                        const dotCalls = `{dot_calls_src}`;
-                        const vizc = new Viz();
-                        vizc.renderSVGElement(dotCalls).then(svg => {{
-                            const cont = document.getElementById('viz_calls');
-                            cont.innerHTML='';
-                            cont.appendChild(svg);
-                        }});
-                        document.getElementById('dlpng_calls').onclick = async () => {{
-                            const svgEl = document.querySelector('#viz_calls svg');
-                            if(!svgEl) return;
-                            const xml = new XMLSerializer().serializeToString(svgEl);
-                            const svg64 = btoa(unescape(encodeURIComponent(xml)));
-                            const image64 = 'data:image/svg+xml;base64,' + svg64;
-                            const img = new Image();
-                            img.onload = function(){{
-                                const canvas = document.createElement('canvas');
-                                canvas.width = img.width; canvas.height = img.height;
-                                const ctx = canvas.getContext('2d');
-                                ctx.drawImage(img, 0, 0);
-                                const link = document.createElement('a');
-                                link.download = 'grafo_llamadas.png';
-                                link.href = canvas.toDataURL('image/png');
-                                link.click();
-                            }};
-                            img.src = image64;
-                        }};
-                    </script>
-                    """,
-                    height=700,
-                    scrolling=True
-            )
+            st.graphviz_chart(dot_calls.source, use_container_width=True)
+            
+            # Botones de descarga
+            col_c1, col_c2 = st.columns(2)
+            with col_c1:
+                st.download_button(
+                    label="📥 Descargar SVG",
+                    data=dot_calls.source,
+                    file_name="grafo_llamadas.svg",
+                    mime="image/svg+xml",
+                    help="Archivo vectorial escalable"
+                )
+            with col_c2:
+                st.download_button(
+                    label="📄 Descargar DOT",
+                    data=dot_calls.source,
+                    file_name="grafo_llamadas.dot",
+                    mime="text/vnd.graphviz"
+                )
 
         finally:
             tmp_dir_obj.cleanup()
