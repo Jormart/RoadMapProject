@@ -122,13 +122,46 @@ with mode[0]:
             if analizar_sql and isinstance(selects, dict):
                 selects = {k: sorted(list(set(v))) for k, v in selects.items()}
 
-            st.subheader("Diagrama de jerarquía")
-            dot = build_graph(dicc, selects, analizar_sql)
-            
-            # Mostrar gráfico con mayor altura
-            st.graphviz_chart(dot.source, use_container_width=True)
-            
-            # Descargar fuente DOT (SVG requiere binarios Graphviz, no disponibles en Cloud)
+                        st.subheader("Jerarquía (texto)")
+                        tree_text = build_tree_text(dicc, selects)
+                        st.code(tree_text, language="text")
+
+                        st.subheader("Diagrama de jerarquía")
+                        dot = build_graph(dicc, selects, analizar_sql)
+
+                        # Vista previa estándar
+                        st.graphviz_chart(dot.source, use_container_width=True)
+
+                        # Render scrollable con Viz.js (solo visualización)
+                        st.markdown(
+                                f"""
+                                <div style="border:1px solid #ccc; border-radius:6px; overflow:auto; height:80vh;">
+                                    <div id="viz-parrafos"></div>
+                                </div>
+                                <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
+                                <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
+                                <script>
+                                    (function(){
+                                        const src = {dot_json};
+                                        const dot = src;
+                                        try {
+                                            const viz = new Viz();
+                                            viz.renderSVGElement(dot).then(function(svg) {
+                                                const el = document.getElementById('viz-parrafos');
+                                                el.innerHTML = '';
+                                                el.appendChild(svg);
+                                                svg.style.width = '1500px';
+                                                svg.style.height = 'auto';
+                                                svg.style.background = 'white';
+                                            }).catch(function(e){ console.error(e); });
+                                        } catch(e) { console.error(e); }
+                                    })();
+                                </script>
+                                """.replace("{dot_json}", json.dumps(dot.source)),
+                                unsafe_allow_html=True
+                        )
+
+                        # Descargar fuente DOT (SVG requiere binarios Graphviz, no disponibles en Cloud)
             st.download_button(
                 label="📥 Descargar diagrama (DOT)",
                 data=dot.source,
