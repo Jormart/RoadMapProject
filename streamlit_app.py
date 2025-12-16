@@ -33,9 +33,17 @@ with mode[0]:
     with col3:
         run_btn = st.button("Analizar")
 
-    def build_graph(diccionario, selects_por_parrafo, analizar_sql=False):
+    colA, colB, colC = st.columns([1,1,1])
+    with colA:
+        rankdir_opt = st.selectbox("Orientación", options=["Vertical (TB)", "Horizontal (LR)"], index=0)
+    with colB:
+        nodesep = st.slider("Separación horizontal", min_value=0.2, max_value=2.0, value=0.6, step=0.1)
+    with colC:
+        ranksep = st.slider("Separación vertical", min_value=0.2, max_value=2.0, value=0.6, step=0.1)
+
+    def build_graph(diccionario, selects_por_parrafo, analizar_sql=False, rankdir='TB', nodesep_val=0.6, ranksep_val=0.6):
         dot = Digraph(comment='Llamadas COBOL', format='svg', engine='dot')
-        dot.attr(dpi='150')
+        dot.attr(dpi='150', rankdir=rankdir, nodesep=str(nodesep_val), ranksep=str(ranksep_val))
         dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='10')
 
         visitados = set()
@@ -101,8 +109,17 @@ with mode[0]:
             st.code(tree_text, language="text")
 
             st.subheader("Diagrama de llamadas")
-            dot = build_graph(dicc, selects, analizar_sql)
+            rd = 'TB' if rankdir_opt.startswith('Vertical') else 'LR'
+            dot = build_graph(dicc, selects, analizar_sql, rankdir=rd, nodesep_val=nodesep, ranksep_val=ranksep)
             st.graphviz_chart(dot.source)
+
+            svg_bytes = dot.pipe(format='svg')
+            st.download_button(
+                label="Descargar SVG",
+                data=svg_bytes,
+                file_name="jerarquia_parrafos.svg",
+                mime="image/svg+xml"
+            )
 
             if analizar_sql:
                 st.info(f"Bloques EXEC SQL encontrados: {sql_blocks}")
