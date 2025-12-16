@@ -28,17 +28,20 @@ mode = st.tabs(["Jerarquía de párrafos", "Llamadas entre programas"])
 with mode[0]:
     st.markdown("Analiza la jerarquía de llamadas entre párrafos y las tablas DB2 utilizadas.")
     uploaded = st.file_uploader("Sube un archivo COBOL (.cob/.txt)", type=["cob", "txt"])
-    col1, col2 = st.columns([2,1])
+    col1, col2, col3 = st.columns([2,1,1])
     with col1:
         parrafo_inicio = st.text_input("Párrafo inicial (opcional)", value="")
     with col2:
         analizar_sql = st.checkbox("Incluir tablas DB2", value=True)
+    with col3:
+        orientacion = st.selectbox("Orientación", ["Horizontal", "Vertical"], index=0, help="Horizontal (LR) para árboles profundos, Vertical (TB) para árboles anchos")
     
     run_btn = st.button("Analizar jerarquía", type="primary") 
 
-    def build_graph(diccionario, selects_por_parrafo, analizar_sql=False):
+    def build_graph(diccionario, selects_por_parrafo, analizar_sql=False, orientacion='LR'):
         dot = Digraph(comment='Llamadas COBOL', format='png', engine='dot')
-        dot.attr(dpi='300', rankdir='LR', nodesep='0.6', ranksep='1.2', bgcolor='white')
+        rankdir = 'LR' if orientacion == 'Horizontal' else 'TB'
+        dot.attr(dpi='300', rankdir=rankdir, nodesep='0.6', ranksep='1.2', bgcolor='white')
         dot.attr('node', shape='box', style='filled', fillcolor='#E3F2FD', fontname='Helvetica', fontsize='11', fontcolor='black', color='black')
 
         visitados = set()
@@ -129,7 +132,7 @@ with mode[0]:
             st.code(tree_text, language="text")
 
             st.subheader("Diagrama de jerarquía (zoom con rueda del ratón, arrastrar para mover)")
-            dot = build_graph(dicc, selects, analizar_sql)
+            dot = build_graph(dicc, selects, analizar_sql, orientacion)
 
             # Visor interactivo con zoom y pan
             dot_escaped = json.dumps(dot.source)
