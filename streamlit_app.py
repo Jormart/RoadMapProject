@@ -38,7 +38,7 @@ with mode[0]:
     def build_graph(diccionario, selects_por_parrafo, analizar_sql=False):
         dot = Digraph(comment='Llamadas COBOL', format='png', engine='dot')
         dot.attr(dpi='300', rankdir='LR', nodesep='0.6', ranksep='1.2', bgcolor='white')
-        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='11', fontcolor='black', color='black')
+        dot.attr('node', shape='box', style='filled', fillcolor='#E3F2FD', fontname='Helvetica', fontsize='11', fontcolor='black', color='black')
 
         visitados = set()
         niveles = {}
@@ -192,7 +192,7 @@ with mode[1]:
     def construir_grafo_directorio(llamadasdir, objetivo6):
         dot = Digraph(comment='Llamadas COBOL (directorio)', format='png', engine='dot')
         dot.attr(dpi='300', rankdir='LR', nodesep='0.8', ranksep='1.2', splines='ortho', bgcolor='white')
-        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='11', fontcolor='black', color='black')
+        dot.attr('node', shape='box', style='filled', fillcolor='#E3F2FD', fontname='Helvetica', fontsize='11', fontcolor='black', color='black')
 
         # nodo objetivo
         if objetivo6:
