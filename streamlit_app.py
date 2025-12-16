@@ -36,9 +36,9 @@ with mode[0]:
     run_btn = st.button("Analizar jerarquía", type="primary") 
 
     def build_graph(diccionario, selects_por_parrafo, analizar_sql=False):
-        dot = Digraph(comment='Llamadas COBOL', format='svg', engine='dot')
-        dot.attr(dpi='300', rankdir='TB', nodesep='0.6', ranksep='0.8', bgcolor='white')
-        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='11')
+        dot = Digraph(comment='Llamadas COBOL', format='png', engine='dot')
+        dot.attr(dpi='300', rankdir='LR', nodesep='0.6', ranksep='1.2', bgcolor='white')
+        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='11', fontcolor='black', color='black')
 
         visitados = set()
         niveles = {}
@@ -68,10 +68,10 @@ with mode[0]:
             with dot.subgraph() as s:
                 s.attr(rank='same')
                 for nodo in niveles_invertido[nivel]:
-                    color = 'lightblue'
+                    color = '#E3F2FD'  # azul muy claro
                     if analizar_sql and nodo in selects_por_parrafo:
-                        color = 'lightgreen'
-                    s.node(nodo, style='filled', fillcolor=color, fontcolor='black')
+                        color = '#C8E6C9'  # verde muy claro
+                    s.node(nodo, style='filled', fillcolor=color, fontcolor='black', color='black')
 
         for (origen, destino), numero in orden_llamadas.items():
             dot.edge(origen, destino, color='blue', style='solid', arrowsize='0.5', label=str(numero))
@@ -130,43 +130,35 @@ with mode[0]:
             st.subheader("Diagrama de jerarquía")
             dot = build_graph(dicc, selects, analizar_sql)
 
-            # Vista previa estándar
-            st.graphviz_chart(dot.source, use_container_width=True)
+            # Vista en pantalla con scroll horizontal
+            st.graphviz_chart(dot.source, use_container_width=False)
 
-            # Render scrollable con Viz.js (solo visualización)
-            dot_json_str = json.dumps(dot.source)
-            viz_html = """
-                <div style="border:1px solid #ccc; border-radius:6px; overflow:auto; height:80vh;">
-                  <div id="viz-parrafos"></div>
-                </div>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
-                <script>
-                  (function(){
-                    const dotSrc = DOT_SOURCE_PLACEHOLDER;
-                    try {
-                      const viz = new Viz();
-                      viz.renderSVGElement(dotSrc).then(function(svg) {
-                        const el = document.getElementById('viz-parrafos');
-                        el.innerHTML = '';
-                        el.appendChild(svg);
-                        svg.style.width = '1500px';
-                        svg.style.height = 'auto';
-                        svg.style.background = 'white';
-                      }).catch(function(e){ console.error(e); });
-                    } catch(e) { console.error(e); }
-                  })();
-                </script>
-                """.replace("DOT_SOURCE_PLACEHOLDER", dot_json_str)
-            st.markdown(viz_html, unsafe_allow_html=True)
-
-            # Descargar fuente DOT (SVG requiere binarios Graphviz, no disponibles en Cloud)
-            st.download_button(
-                label="📥 Descargar diagrama (DOT)",
-                data=dot.source,
-                file_name="jerarquia_parrafos.dot",
-                mime="text/vnd.graphviz"
-            )
+            # Generar PNG para descarga
+            try:
+                png_data = dot.pipe(format='png')
+                col_d1, col_d2 = st.columns(2)
+                with col_d1:
+                    st.download_button(
+                        label="📥 Descargar PNG",
+                        data=png_data,
+                        file_name="jerarquia_parrafos.png",
+                        mime="image/png"
+                    )
+                with col_d2:
+                    st.download_button(
+                        label="📄 Descargar DOT",
+                        data=dot.source,
+                        file_name="jerarquia_parrafos.dot",
+                        mime="text/vnd.graphviz"
+                    )
+            except Exception as e:
+                st.warning(f"Descarga PNG no disponible en este entorno. Usa DOT y conviértelo localmente.")
+                st.download_button(
+                    label="📄 Descargar DOT",
+                    data=dot.source,
+                    file_name="jerarquia_parrafos.dot",
+                    mime="text/vnd.graphviz"
+                )
 
             if analizar_sql:
                 st.info(f"Bloques EXEC SQL encontrados: {sql_blocks}")
@@ -198,19 +190,19 @@ with mode[1]:
         return out_dir, temp_dir
 
     def construir_grafo_directorio(llamadasdir, objetivo6):
-        dot = Digraph(comment='Llamadas COBOL (directorio)', format='svg', engine='dot')
-        dot.attr(dpi='300', rankdir='TB', nodesep='0.5', ranksep='0.5', splines='ortho', bgcolor='white')
-        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='11', fontcolor='black')
+        dot = Digraph(comment='Llamadas COBOL (directorio)', format='png', engine='dot')
+        dot.attr(dpi='300', rankdir='LR', nodesep='0.8', ranksep='1.2', splines='ortho', bgcolor='white')
+        dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='11', fontcolor='black', color='black')
 
         # nodo objetivo
         if objetivo6:
-            dot.node(objetivo6, objetivo6, style='filled', fillcolor='#B4C7E7', shape='box', fontcolor='black')
+            dot.node(objetivo6, objetivo6, style='filled', fillcolor='#B4C7E7', shape='box', fontcolor='black', color='black')
 
         # llamantes (-> objetivo)
         for llamante, llamados in llamadasdir.items():
             for destino in set(llamados):
                 if objetivo6 and (destino[:6] == objetivo6 or destino[:5] == objetivo6[:5]):
-                    dot.node(llamante, llamante, style='filled', fillcolor='#A4C2F4', shape='component', fontcolor='black')
+                    dot.node(llamante, llamante, style='filled', fillcolor='#A4C2F4', shape='component', fontcolor='black', color='black')
                     dot.edge(llamante, objetivo6, color='#3D85C6', arrowsize='0.7')
 
         # llamados (objetivo -> destino)
@@ -221,7 +213,7 @@ with mode[1]:
                 if str(destino).startswith('CICS-'):
                     color = '#FFD966'
                     shape = 'cylinder'
-                dot.node(destino, destino, style='filled', fillcolor=color, shape=shape, fontcolor='black')
+                dot.node(destino, destino, style='filled', fillcolor=color, shape=shape, fontcolor='black', color='black')
                 dot.edge(objetivo6, destino, color='#3D85C6', arrowsize='0.7')
 
         return dot
@@ -250,15 +242,34 @@ with mode[1]:
             objetivo6 = (prog_objetivo or "").upper()[:6]
             dot_calls = construir_grafo_directorio(llamadasdir, objetivo6)
             st.subheader("Diagrama de llamadas")
-            st.graphviz_chart(dot_calls.source, use_container_width=True)
+            st.graphviz_chart(dot_calls.source, use_container_width=False)
             
-            # Descargar fuente DOT
-            st.download_button(
-                label="📥 Descargar diagrama (DOT)",
-                data=dot_calls.source,
-                file_name="grafo_llamadas.dot",
-                mime="text/vnd.graphviz"
-            )
+            # Descargar PNG y DOT
+            try:
+                png_calls = dot_calls.pipe(format='png')
+                col_c1, col_c2 = st.columns(2)
+                with col_c1:
+                    st.download_button(
+                        label="📥 Descargar PNG",
+                        data=png_calls,
+                        file_name="grafo_llamadas.png",
+                        mime="image/png"
+                    )
+                with col_c2:
+                    st.download_button(
+                        label="📄 Descargar DOT",
+                        data=dot_calls.source,
+                        file_name="grafo_llamadas.dot",
+                        mime="text/vnd.graphviz"
+                    )
+            except Exception as e:
+                st.warning("Descarga PNG no disponible. Usa DOT y conviértelo localmente.")
+                st.download_button(
+                    label="📄 Descargar DOT",
+                    data=dot_calls.source,
+                    file_name="grafo_llamadas.dot",
+                    mime="text/vnd.graphviz"
+                )
 
         finally:
             tmp_dir_obj.cleanup()
