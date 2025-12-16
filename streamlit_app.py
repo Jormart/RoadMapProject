@@ -41,6 +41,12 @@ with mode[0]:
     with colC:
         ranksep = st.slider("Separación vertical", min_value=0.2, max_value=2.0, value=0.6, step=0.1)
 
+    colF1, colF2 = st.columns([1,1])
+    with colF1:
+        max_depth = st.slider("Profundidad máxima (recursión)", min_value=1, max_value=20, value=10, step=1)
+    with colF2:
+        sql_types = st.multiselect("Tipos SQL a mostrar", options=["SELECT", "INSERT", "UPDATE", "DELETE", "OPEN CURSOR", "CLOSE CURSOR", "FETCH CURSOR", "COMMIT", "ROLLBACK"], default=["SELECT", "INSERT", "UPDATE", "DELETE", "OPEN CURSOR", "CLOSE CURSOR", "FETCH CURSOR"]) 
+
     def build_graph(diccionario, selects_por_parrafo, analizar_sql=False, rankdir='TB', nodesep_val=0.6, ranksep_val=0.6):
         dot = Digraph(comment='Llamadas COBOL', format='svg', engine='dot')
         dot.attr(dpi='150', rankdir=rankdir, nodesep=str(nodesep_val), ranksep=str(ranksep_val))
@@ -56,6 +62,8 @@ with mode[0]:
                 return
             visitados.add(nodo)
             niveles[nodo] = nivel
+            if nivel >= max_depth:
+                return
             for hijo in diccionario.get(nodo, []):
                 orden_llamadas[(nodo, hijo)] = contador[0]
                 contador[0] += 1
@@ -85,6 +93,10 @@ with mode[0]:
         if analizar_sql:
             for parrafo, selects in selects_por_parrafo.items():
                 for idx, sel in enumerate(selects):
+                    # Filtrar por tipo seleccionado
+                    tipo_label = sel.split()[0]
+                    if sql_types and tipo_label not in sql_types:
+                        continue
                     nodo_select = f"{parrafo}_SQL_{idx+1}"
                     dot.node(nodo_select, label=sel, shape='note', style='filled', fillcolor='yellow')
                     dot.edge(parrafo, nodo_select, style='dashed', color='orange')
@@ -123,6 +135,50 @@ with mode[0]:
             rd = 'TB' if rankdir_opt.startswith('Vertical') else 'LR'
             dot = build_graph(dicc, selects, analizar_sql, rankdir=rd, nodesep_val=nodesep, ranksep_val=ranksep)
             st.graphviz_chart(dot.source)
+
+            # Render client-side with viz.js for zoom and PNG export
+            import streamlit.components.v1 as components
+            dot_src = dot.source.replace("`", "\\`")
+            components.html(
+                    f"""
+                    <div id='viz_parrafos_container' style='border:1px solid #333; border-radius:8px; overflow:auto; max-height:600px;'>
+                        <div id='viz_parrafos'></div>
+                    </div>
+                    <button id='dlpng_parrafos' style='margin-top:8px;'>Descargar PNG</button>
+                    <script src='https://unpkg.com/viz.js@2.1.2/dist/viz.js'></script>
+                    <script src='https://unpkg.com/viz.js@2.1.2/dist/lite.render.js'></script>
+                    <script>
+                        const dotSrc = `{dot_src}`;
+                        const viz = new Viz();
+                        viz.renderSVGElement(dotSrc).then(svg => {{
+                            const cont = document.getElementById('viz_parrafos');
+                            cont.innerHTML='';
+                            cont.appendChild(svg);
+                        }});
+                        document.getElementById('dlpng_parrafos').onclick = async () => {{
+                            const svgEl = document.querySelector('#viz_parrafos svg');
+                            if(!svgEl) return;
+                            const xml = new XMLSerializer().serializeToString(svgEl);
+                            const svg64 = btoa(unescape(encodeURIComponent(xml)));
+                            const image64 = 'data:image/svg+xml;base64,' + svg64;
+                            const img = new Image();
+                            img.onload = function(){{
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.width; canvas.height = img.height;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0);
+                                const link = document.createElement('a');
+                                link.download = 'jerarquia_parrafos.png';
+                                link.href = canvas.toDataURL('image/png');
+                                link.click();
+                            }};
+                            img.src = image64;
+                        }};
+                    </script>
+                    """,
+                    height=700,
+                    scrolling=True
+            )
 
             # En Streamlit Cloud, graphviz backend binarios pueden no estar disponibles.
             # Evitamos dot.pipe/render y ofrecemos descarga del DOT fuente.
@@ -213,11 +269,53 @@ with mode[1]:
             st.subheader("Resumen de llamadas detectadas")
             total = sum(len(v) for v in llamadasdir.values())
             st.write(f"Total de llamadas detectadas: {total}")
-
             objetivo6 = (prog_objetivo or "").upper()[:6]
             dot_calls = construir_grafo_directorio(llamadasdir, objetivo6)
             st.subheader("Grafo de llamadas (directorio)")
             st.graphviz_chart(dot_calls.source)
+
+            import streamlit.components.v1 as components
+            dot_calls_src = dot_calls.source.replace("`", "\\`")
+            components.html(
+                    f"""
+                    <div id='viz_calls_container' style='border:1px solid #333; border-radius:8px; overflow:auto; max-height:600px;'>
+                        <div id='viz_calls'></div>
+                    </div>
+                    <button id='dlpng_calls' style='margin-top:8px;'>Descargar PNG</button>
+                    <script src='https://unpkg.com/viz.js@2.1.2/dist/viz.js'></script>
+                    <script src='https://unpkg.com/viz.js@2.1.2/dist/lite.render.js'></script>
+                    <script>
+                        const dotCalls = `{dot_calls_src}`;
+                        const vizc = new Viz();
+                        vizc.renderSVGElement(dotCalls).then(svg => {{
+                            const cont = document.getElementById('viz_calls');
+                            cont.innerHTML='';
+                            cont.appendChild(svg);
+                        }});
+                        document.getElementById('dlpng_calls').onclick = async () => {{
+                            const svgEl = document.querySelector('#viz_calls svg');
+                            if(!svgEl) return;
+                            const xml = new XMLSerializer().serializeToString(svgEl);
+                            const svg64 = btoa(unescape(encodeURIComponent(xml)));
+                            const image64 = 'data:image/svg+xml;base64,' + svg64;
+                            const img = new Image();
+                            img.onload = function(){{
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.width; canvas.height = img.height;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0);
+                                const link = document.createElement('a');
+                                link.download = 'grafo_llamadas.png';
+                                link.href = canvas.toDataURL('image/png');
+                                link.click();
+                            }};
+                            img.src = image64;
+                        }};
+                    </script>
+                    """,
+                    height=700,
+                    scrolling=True
+            )
 
         finally:
             tmp_dir_obj.cleanup()
