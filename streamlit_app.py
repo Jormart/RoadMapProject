@@ -282,7 +282,7 @@ with mode[1]:
         """
         dot = Digraph(comment='Diagrama XPLAIN', format='png', engine='dot')
         dot.attr(dpi='300', rankdir='LR', nodesep='0.4', ranksep='1.2', splines='ortho', bgcolor='white')
-        dot.attr('node', fontname='Helvetica', fontsize='11', fontcolor='black', width='1.5', height='0.6')
+        dot.attr('node', fontname='Helvetica', fontsize='11', fontcolor='black', width='1.5', height='1.0')
         
         # Subgrafo izquierdo: Llamantes
         if llamantes:
