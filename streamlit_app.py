@@ -138,10 +138,10 @@ with mode[0]:
                 <div style="padding:8px; background:#f0f0f0; border-bottom:1px solid #ddd; border-radius:8px 8px 0 0;">
                     <button onclick="panZoomInstance.zoomIn()" style="padding:5px 15px; margin-right:5px; cursor:pointer;">➕ Zoom In</button>
                     <button onclick="panZoomInstance.zoomOut()" style="padding:5px 15px; margin-right:5px; cursor:pointer;">➖ Zoom Out</button>
-                    <button onclick="panZoomInstance.resetZoom(); panZoomInstance.center();" style="padding:5px 15px; margin-right:5px; cursor:pointer;">🔄 Reset</button>
-                    <button onclick="panZoomInstance.fit(); panZoomInstance.center();" style="padding:5px 15px; cursor:pointer;">📐 Ajustar</button>
+                    <button onclick="panZoomInstance.fit(); panZoomInstance.center();" style="padding:5px 15px; margin-right:5px; cursor:pointer;">🔄 Reset</button>
+                    <button onclick="panZoomInstance.zoom(0.5); panZoomInstance.center();" style="padding:5px 15px; cursor:pointer;">📐 Alejar</button>
                 </div>
-                <div id="graph-container" style="width:100%; height:70vh; overflow:hidden;"></div>
+                <div id="graph-container" style="width:100%; height:100vh; overflow:hidden;"></div>
             </div>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
@@ -163,10 +163,15 @@ with mode[0]:
                             controlIconsEnabled: false,
                             fit: true,
                             center: true,
-                            minZoom: 0.1,
+                            minZoom: 0.05,
                             maxZoom: 20,
                             zoomScaleSensitivity: 0.3
                         }});
+                        // Ajustar zoom inicial para ver todo
+                        setTimeout(function() {{
+                            panZoomInstance.fit();
+                            panZoomInstance.center();
+                        }}, 100);
                     }}).catch(function(err) {{
                         console.error('Viz.js error:', err);
                         document.getElementById('graph-container').innerHTML = '<p style="color:red; padding:20px;">Error renderizando diagrama</p>';
@@ -174,7 +179,7 @@ with mode[0]:
                 }})();
             </script>
             '''
-            st.components.v1.html(viewer_html, height=550, scrolling=False)
+            st.components.v1.html(viewer_html, height=1000, scrolling=False)
 
             # Descargar DOT
             st.download_button(
@@ -422,10 +427,10 @@ with mode[1]:
             <div style="padding:8px; background:#f0f0f0; border-bottom:1px solid #ddd; border-radius:8px 8px 0 0;">
                 <button onclick="panZoomXplain.zoomIn()" style="padding:5px 15px; margin-right:5px; cursor:pointer;">➕ Zoom In</button>
                 <button onclick="panZoomXplain.zoomOut()" style="padding:5px 15px; margin-right:5px; cursor:pointer;">➖ Zoom Out</button>
-                <button onclick="panZoomXplain.resetZoom(); panZoomXplain.center();" style="padding:5px 15px; margin-right:5px; cursor:pointer;">🔄 Reset</button>
-                <button onclick="panZoomXplain.fit(); panZoomXplain.center();" style="padding:5px 15px; cursor:pointer;">📐 Ajustar</button>
+                <button onclick="panZoomXplain.fit(); panZoomXplain.center();" style="padding:5px 15px; margin-right:5px; cursor:pointer;">🔄 Reset</button>
+                <button onclick="panZoomXplain.zoom(0.5); panZoomXplain.center();" style="padding:5px 15px; cursor:pointer;">📐 Alejar</button>
             </div>
-            <div id="graph-xplain-container" style="width:100%; height:95vh; overflow:hidden;"></div>
+            <div id="graph-xplain-container" style="width:100%; height:100vh; overflow:hidden;"></div>
         </div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
@@ -447,10 +452,16 @@ with mode[1]:
                         controlIconsEnabled: false,
                         fit: true,
                         center: true,
-                        minZoom: 0.1,
+                        minZoom: 0.05,
                         maxZoom: 20,
-                        zoomScaleSensitivity: 0.3
+                        zoomScaleSensitivity: 0.3,
+                        initialViewBox: {{ x: 0, y: 0, width: 2000, height: 2000 }}
                     }});
+                    // Ajustar zoom inicial para ver todo
+                    setTimeout(function() {{
+                        panZoomXplain.fit();
+                        panZoomXplain.center();
+                    }}, 100);
                 }}).catch(function(err) {{
                     console.error('Viz.js error:', err);
                     document.getElementById('graph-xplain-container').innerHTML = '<p style="color:red; padding:20px;">Error renderizando diagrama</p>';
@@ -458,7 +469,7 @@ with mode[1]:
             }})();
         </script>
         '''
-        st.components.v1.html(viewer_html, height=900, scrolling=False)
+        st.components.v1.html(viewer_html, height=1000, scrolling=False)
         
         # Detalles expandibles
         with st.expander("📋 Detalles del análisis"):
