@@ -103,6 +103,17 @@ with mode[0]:
         try:
             pi = parrafo_inicio.strip() or None
             dicc, sql_blocks, selects = roadmap07.analizar_cobol(tmp_path, pi, analizar_sql)
+            # Si se analiza SQL, computar frecuencias por párrafo y etiquetar con (xN)
+            if analizar_sql and isinstance(selects, dict):
+                from collections import Counter
+                selects_counted = {}
+                for k, v in selects.items():
+                    cnt = Counter(v)
+                    selects_counted[k] = [f"{stmt} (x{n})" for stmt, n in sorted(cnt.items())]
+                selects = selects_counted
+            # Deduplicar sentencias SQL por párrafo para reducir repeticiones visuales
+            if analizar_sql and isinstance(selects, dict):
+                selects = {k: sorted(list(set(v))) for k, v in selects.items()}
 
             st.subheader("Jerarquía de llamadas")
             tree_text = build_tree_text(dicc, selects)
@@ -113,12 +124,13 @@ with mode[0]:
             dot = build_graph(dicc, selects, analizar_sql, rankdir=rd, nodesep_val=nodesep, ranksep_val=ranksep)
             st.graphviz_chart(dot.source)
 
-            svg_bytes = dot.pipe(format='svg')
+            # En Streamlit Cloud, graphviz backend binarios pueden no estar disponibles.
+            # Evitamos dot.pipe/render y ofrecemos descarga del DOT fuente.
             st.download_button(
-                label="Descargar SVG",
-                data=svg_bytes,
-                file_name="jerarquia_parrafos.svg",
-                mime="image/svg+xml"
+                label="Descargar DOT",
+                data=dot.source,
+                file_name="jerarquia_parrafos.dot",
+                mime="text/vnd.graphviz"
             )
 
             if analizar_sql:
