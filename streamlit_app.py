@@ -8,15 +8,24 @@ import tempfile
 import zipfile
 import importlib.util
 from collections import defaultdict
+import importlib
 
 # Importar analizadores finales sin ejecutar sus mains
-spec_rm = importlib.util.spec_from_file_location("roadmap07", os.path.join(os.path.dirname(__file__), "RoadMap.08.py"))
-roadmap07 = importlib.util.module_from_spec(spec_rm)
-spec_rm.loader.exec_module(roadmap07)
+# Recargar módulos cada vez para reflejar cambios en RoadMap.08.py y RoadMapCalls.05.py
+def load_roadmap08():
+    spec_rm = importlib.util.spec_from_file_location("roadmap08", os.path.join(os.path.dirname(__file__), "RoadMap.08.py"))
+    roadmap08 = importlib.util.module_from_spec(spec_rm)
+    spec_rm.loader.exec_module(roadmap08)
+    return roadmap08
 
-spec_calls = importlib.util.spec_from_file_location("roadmapcalls05", os.path.join(os.path.dirname(__file__), "RoadMapCalls.05.py"))
-roadmapcalls05 = importlib.util.module_from_spec(spec_calls)
-spec_calls.loader.exec_module(roadmapcalls05)
+def load_roadmapcalls05():
+    spec_calls = importlib.util.spec_from_file_location("roadmapcalls05", os.path.join(os.path.dirname(__file__), "RoadMapCalls.05.py"))
+    roadmapcalls05 = importlib.util.module_from_spec(spec_calls)
+    spec_calls.loader.exec_module(roadmapcalls05)
+    return roadmapcalls05
+
+roadmap08 = load_roadmap08()
+roadmapcalls05 = load_roadmapcalls05()
 
 st.set_page_config(page_title="COBOL RoadMap Analyzer", layout="wide")
 st.title("COBOL RoadMap Analyzer")
@@ -24,7 +33,7 @@ st.caption("Visualiza jerarquía de párrafos/SQL y llamadas entre programas.")
 
 mode = st.tabs(["Jerarquía de párrafos", "Llamadas entre programas"])
 
-# --- Tab 1: Jerarquía de párrafos (RoadMap.07) ---
+# --- Tab 1: Jerarquía de párrafos (RoadMap.08) ---
 with mode[0]:
     st.markdown("Analiza la jerarquía de llamadas entre párrafos y las tablas DB2 utilizadas.")
     uploaded = st.file_uploader("Sube un archivo COBOL (.cob/.txt)", type=["cob", "txt"])
@@ -105,16 +114,18 @@ with mode[0]:
 
     def build_tree_text(diccionario, selects_por_parrafo):
         buf = StringIO()
-        roadmap07.imprimir_arbol_llamadas(diccionario, selects_por_parrafo, archivo=buf)
+        roadmap08.imprimir_arbol_llamadas(diccionario, selects_por_parrafo, archivo=buf)
         return buf.getvalue()
 
     if run_btn and uploaded is not None:
+        # Recargar el módulo para obtener los últimos cambios
+        roadmap08 = load_roadmap08()
         with tempfile.NamedTemporaryFile(delete=False, suffix=".cob") as tmp:
             tmp.write(uploaded.getvalue())
             tmp_path = tmp.name
         try:
             pi = parrafo_inicio.strip() or None
-            dicc, sql_blocks, selects = roadmap07.analizar_cobol(tmp_path, pi, analizar_sql)
+            dicc, sql_blocks, selects = roadmap08.analizar_cobol(tmp_path, pi, analizar_sql)
             # Si se analiza SQL, computar frecuencias por párrafo y etiquetar con (xN)
             if analizar_sql and isinstance(selects, dict):
                 from collections import Counter
