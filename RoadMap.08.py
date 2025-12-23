@@ -9,6 +9,7 @@ import traceback  # Para manejo de errores detallado
 import sys        # Para acceder a argumentos de línea de comandos y el tracer de funciones
 import os         # Para manipulación de rutas de archivos
 import re         # Para expresiones regulares en el análisis
+import argparse   # Gestion de parametros
 
 # Módulo externo necesario (instalar con: pip install graphviz)
 from graphviz import Digraph  # Para generación de diagramas
@@ -141,9 +142,15 @@ def detectar_parrafo(linea):
     # en caso contrario usar la línea sin los espacios a la izquierda.
     code_area = linea[7:] if len(linea) > 7 else linea.lstrip()
 
+    
     # Evitar confundir líneas que empiezan por PERFORM u otras sentencias
-    if code_area.strip().upper().startswith(('PERFORM ', 'IF ', 'ELSE ', 'EVALUATE ', 'MOVE ', 'SET ')):
+    if code_area.strip().upper().startswith(('PERFORM ', 'IF ', 'ELSE ', 'EVALUATE ', 'MOVE ', 'SET ' , 'DISPLAY', 'TO' )):
         return None
+    
+    # Omitir parrafos comunes de error o log que no aportan a la logica funcional del SW
+    if code_area.strip().upper().startswith(('TRALOG-ZL-LEVEL5', 'PROGRAMMFEHLER', 'DB2-FEHLER', 'TRALOG-ZEILE'),4):
+        return None
+        
 
     # Buscar un posible label al inicio del área de código:
     # nombre compuesto por letras, dígitos y '-', seguido opcionalmente de espacios
@@ -185,6 +192,10 @@ def detectar_perform(linea):
             # Excluir ciertas palabras clave que no son nombres de párrafo
             if destino in ['VARYING', 'UNTIL', 'WITH', 'END-IF', 'END-EXEC', 'STOP RUN', 'EXIT', 'CONTINUE']:
                 return None
+            # Omitir parrafos comunes de error o log que no aportan a la logica funcional del SW
+            if destino.strip().upper().startswith(('TRALOG-ZL-LEVEL5', 'PROGRAMMFEHLER', 'DB2-FEHLER', 'TRALOG-ZEILE'),4):
+                return None
+
             return destino
         except (IndexError, ValueError):
             return None
@@ -266,7 +277,7 @@ def analizar_cobol(ruta_archivo, parrafo_inicio=None, analizar_sql=False):
     try:
         with open(ruta_archivo, 'r', encoding='latin-1') as archivo:
             for linea in archivo:
-                linea = linea.upper() #los fuentes mezclan mayusculas/minusculas
+                linea=linea.upper()
                 # Saltar líneas ignorables (comentarios, vacías)
                 if es_linea_ignorable(linea):
                     continue
@@ -314,7 +325,7 @@ def analizar_cobol(ruta_archivo, parrafo_inicio=None, analizar_sql=False):
                     parrafo_actual = nuevo_parrafo
                     if parrafo_actual not in llamadas:
                         llamadas[parrafo_actual] = []
-                        print(f"llamadas 1 {llamadas}")
+                        # ~ print(f"llamadas 1 {llamadas}")
                     continue
 
                 # Detectar llamadas PERFORM dentro del párrafo actual
@@ -322,18 +333,18 @@ def analizar_cobol(ruta_archivo, parrafo_inicio=None, analizar_sql=False):
                     destino = detectar_perform(linea)
                     if destino:
                         llamadas.setdefault(parrafo_actual, []).append(destino)
-                        print(f"llamadas 2 {llamadas}")
+                        # ~ print(f"llamadas 2 {llamadas}")
 
         # Filtrar por párrafo inicial si se especificó
         if parrafo_inicio:
             llamadas = filtrar_desde_parrafo_inicio(llamadas, parrafo_inicio)
-            print(f"llamadas 3 {llamadas}")
+            # ~ print(f"llamadas 3 {llamadas}")
 
         # Obtener solo los párrafos accesibles desde el inicio
         #accesibles = obtener_parrafos_accesibles(llamadas, parrafo_inicio)
         accesibles = llamadas
         #llamadas = {k: v for k, v in llamadas.items() if k in accesibles or k == '__START__'}
-        print(f"llamadas 4 {llamadas}")
+        # ~ print(f"llamadas 4 {llamadas}")
         
         # Filtrar también los SQL si estamos analizándolos
         if analizar_sql:
@@ -431,10 +442,9 @@ def generar_grafo(diccionario, selects_por_parrafo, archivo_salida, analizar_sql
     """
     # Crear objeto Digraph de Graphviz
     dot = Digraph(comment='Llamadas COBOL', format='svg', engine='dot')
-    # ~ dot.attr(dpi='300', rankdir='TB', nodesep='1.0', ranksep='1.5', splines='ortho')  # Configuración para orientación, espaciado y aristas ortogonales
-    # nodesep -> separacion horizontal
-    # ranksep -> separacion vertical minima
-    dot.attr(dpi='300', rankdir='LR', nodesep='1.0', ranksep='0.1', splines='ortho')  # Configuración para orientación, espaciado y aristas ortogonales
+    dot.attr(dpi='300', rankdir='TB', nodesep='1.0', ranksep='1.5', splines='ortho')  # Configuración para orientación, espaciado y aristas ortogonales
+    # ~ dot.attr(dpi='300', rankdir='LR', nodesep='1.0', ranksep='0.25', splines='ortho')  # Configuración para orientación, espaciado y aristas ortogonales
+    # ~ dot.attr(dpi='300', rankdir='TB', nodesep='0.25', ranksep='1.0', splines='ortho')  # Configuración para orientación, espaciado y aristas ortogonales
     dot.attr('node', shape='box', style='filled', fontname='Helvetica', fontsize='10')
     
 
@@ -459,6 +469,7 @@ def generar_grafo(diccionario, selects_por_parrafo, archivo_salida, analizar_sql
 
     # Determinar nodo raíz (__START__ o el primer párrafo)
     nodo_raiz = '__START__'
+    # ~ nodo_raiz = 'A20-VERARBEITUNG'
     if nodo_raiz not in diccionario:
         nodo_raiz = next(iter(diccionario))
     asignar_niveles(nodo_raiz)
@@ -487,23 +498,15 @@ def generar_grafo(diccionario, selects_por_parrafo, archivo_salida, analizar_sql
         for parrafo, selects in selects_por_parrafo.items():
             for idx, sel in enumerate(selects):
                 nodo_select = f"{parrafo}_SQL_{idx+1}"
-                #dot.node(nodo_select, label=sel, shape='note', style='filled', fillcolor='yellow')
-                dot.node(
-                    nodo_select,
-                    label=sel,
-                    shape='cylinder',       # forma de base de datos
-                    style='filled',
-                    fillcolor='#FFE599',    # Amarillo suave
-                    fontsize='9',
-                    fontname='Helvetica'
-                )
+                dot.node(nodo_select, label=sel, shape='note', style='filled', fillcolor='yellow')
                 dot.edge(parrafo, nodo_select, style='dashed', color='orange')
     
     # Generar el archivo PDF
-    dot.render(archivo_salida, cleanup=True)
-    print(f"Grafo generado: {archivo_salida}.pdf")
+    # ~ dot.render(archivo_salida, cleanup=True)
+    dot.save(filename=f"./PDF/{archivo_salida}.pdf")
+    print(f"Grafo generado: ./PDF/{archivo_salida}.pdf")
     # Renderizar el archivo .pdf
-    pdf_path = dot.render(filename=f"{archivo_salida}.pdf", format='pdf', cleanup=True)
+    pdf_path = dot.render(filename=f"./PDF/{archivo_salida}", format='pdf', cleanup=True)
 
     # Abrir el PDF automáticamente
     # ~ os.startfile(pdf_path)  # Solo funciona en Windows
@@ -530,24 +533,37 @@ if __name__ == "__main__":
     parrafo_inicio = None  # Por defecto comenzar desde el principio
     
     # Procesar argumentos de línea de comandos
-    if len(sys.argv) > 1:
-        ruta_del_programa_cobol = sys.argv[1]
+    # ~ if len(sys.argv) > 1:
+        # ~ ruta_del_programa_cobol = sys.argv[1]
         
-        # Verificar si se pasó el parámetro SQL o párrafo inicial
-        if len(sys.argv) > 2:
-            for arg in sys.argv[2:]:
-                if arg.upper() == 'SQL':
-                    analizar_sql = True
-                elif not arg.upper() == 'SQL':
-                    parrafo_inicio = arg
-    else:
-        # Modo interactivo si no hay argumentos
-        ruta_del_programa_cobol = input("Por favor, ingresa la ruta del programa COBOL: ")
-        respuesta = input("¿Deseas analizar sentencias SQL? (s/n): ").lower()
-        analizar_sql = respuesta == 's'
-        if not analizar_sql:
-            parrafo_inicio = input("Si deseas comenzar desde un parrafo especifico, ingresalo (de lo contrario, deja en blanco): ")
+        # ~ # Verificar si se pasó el parámetro SQL o párrafo inicial
+        # ~ if len(sys.argv) > 2:
+            # ~ for arg in sys.argv[2:]:
+                # ~ if arg.upper() == 'SQL':
+                    # ~ analizar_sql = True
+                # ~ elif not arg.upper() == 'SQL':
+                    # ~ parrafo_inicio = arg
+    # ~ else:
+        # ~ # Modo interactivo si no hay argumentos
+        # ~ ruta_del_programa_cobol = input("Por favor, ingresa la ruta del programa COBOL: ")
+        # ~ respuesta = input("¿Deseas analizar sentencias SQL? (s/n): ").lower()
+        # ~ analizar_sql = respuesta == 's'
+        # ~ if not analizar_sql:
+            # ~ parrafo_inicio = input("Si deseas comenzar desde un parrafo especifico, ingresalo (de lo contrario, deja en blanco): ")
 
+    ap = argparse.ArgumentParser(
+        description="Genera PDF con grafico de jerarquia de parrafos.\n https://github.com/RickDecar/RoadMapProject"
+    )
+    ap.add_argument("--src", required=True, help="Programa a analizar.")
+    ap.add_argument("--sql", required=False, default=False, choices=[True, False], help="Analisis de sentencias SQL.")
+    ap.add_argument("--parrafo", required=False, default=None, help="Parrafo en el que empezar la jerarquia.")
+    
+    args = ap.parse_args()
+    
+    ruta_del_programa_cobol = args.src
+    analizar_sql = args.sql
+    parrafo_inicio = args.parrafo
+    
     # Ejecutar análisis principal
     diccionario_llamadas, bloques_exec_sql, selects_por_parrafo = analizar_cobol(
         ruta_del_programa_cobol, 
